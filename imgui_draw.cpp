@@ -528,9 +528,14 @@ void ImDrawList::_PopUnusedDrawCmd()
 
 void ImDrawList::AddCallback(ImDrawCallback callback, void* userdata, size_t userdata_size)
 {
+    IM_ASSERT(callback != NULL);
+#ifndef IMGUI_DISABLE_OBSOLETE_FUNCTIONS
+    if (callback == ImDrawCallback_ResetRenderState && _Data->Context != NULL && _Data->Context->PlatformIO.DrawCallback_ResetRenderState != NULL)
+        callback = _Data->Context->PlatformIO.DrawCallback_ResetRenderState; // == ImGui::GetPlatformIO().DrawCallback_ResetRenderState
+#endif
+
     IM_ASSERT_PARANOID(CmdBuffer.Size > 0);
     ImDrawCmd* curr_cmd = &CmdBuffer.Data[CmdBuffer.Size - 1];
-    IM_ASSERT(callback != NULL);
     IM_ASSERT(curr_cmd->UserCallback == NULL);
     if (curr_cmd->ElemCount != 0)
     {
@@ -1479,6 +1484,24 @@ void ImDrawList::AddLine(const ImVec2& p1, const ImVec2& p2, ImU32 col, float th
     PathStroke(col, 0, thickness);
 }
 
+void ImDrawList::AddLineH(float min_x, float max_x, float y, ImU32 col, float thickness)
+{
+    if ((col & IM_COL32_A_MASK) == 0)
+        return;
+    PathLineTo(ImVec2(min_x + 0.5f, y + 0.5f)); // Same as AddLine() above.
+    PathLineTo(ImVec2(max_x + 0.5f, y + 0.5f));
+    PathStroke(col, 0, thickness);
+}
+
+void ImDrawList::AddLineV(float x, float min_y, float max_y, ImU32 col, float thickness)
+{
+    if ((col & IM_COL32_A_MASK) == 0)
+        return;
+    PathLineTo(ImVec2(x + 0.5f, min_y + 0.5f)); // Same as AddLine() above.
+    PathLineTo(ImVec2(x + 0.5f, max_y + 0.5f));
+    PathStroke(col, 0, thickness);
+}
+
 // p_min = upper-left, p_max = lower-right
 // Note we don't render 1 pixels sized rectangles properly.
 void ImDrawList::AddRect(const ImVec2& p_min, const ImVec2& p_max, ImU32 col, float rounding, ImDrawFlags flags, float thickness)
@@ -1654,7 +1677,7 @@ void ImDrawList::AddEllipse(const ImVec2& center, const ImVec2& radius, ImU32 co
     // Because we are filling a closed shape we remove 1 from the count of segments/points
     const float a_max = IM_PI * 2.0f * ((float)num_segments - 1.0f) / (float)num_segments;
     PathEllipticalArcTo(center, radius, rot, 0.0f, a_max, num_segments - 1);
-    PathStroke(col, true, thickness);
+    PathStroke(col, ImDrawFlags_Closed, thickness);
 }
 
 void ImDrawList::AddEllipseFilled(const ImVec2& center, const ImVec2& radius, ImU32 col, float rot, int num_segments)
